@@ -64,14 +64,9 @@ class CallbackStreamTest extends TestCase
 
     public function testAlreadyOpened(): void
     {
+        $this->expectException(StreamStateException::class);
         $this->open();
-
-        try {
-            $this->stream->open();
-            self::assertTrue(false, 'Must throw StreamStateException.');
-        } catch (StreamStateException $e) {
-            $this->close();
-        }
+        $this->stream->open();
     }
 
     public function testNotOpened(): void
@@ -162,6 +157,7 @@ class CallbackStreamTest extends TestCase
 
     public function testOverflowLinks(): void
     {
+        $this->expectException(LinksOverflowException::class);
         $loc = '/';
         $call = 0;
         $this->stream = new CallbackStream($this->render, static function ($content) use (&$call, $loc) {
@@ -169,32 +165,26 @@ class CallbackStreamTest extends TestCase
                 self::assertEquals(self::OPENED, $content);
             } elseif ($call - 1 < CallbackStream::LINKS_LIMIT) {
                 self::assertEquals($loc, $content);
-            } else {
-                self::assertEquals(self::CLOSED, $content);
             }
             ++$call;
         });
 
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly(CallbackStream::LINKS_LIMIT))
             ->method('url')
             ->willReturn($loc)
         ;
 
         $this->open();
 
-        try {
-            for ($i = 0; $i <= CallbackStream::LINKS_LIMIT; ++$i) {
-                $this->stream->push(new Url($loc));
-            }
-            self::assertTrue(false, 'Must throw LinksOverflowException.');
-        } catch (LinksOverflowException $e) {
-            $this->close();
+        for ($i = 0; $i <= CallbackStream::LINKS_LIMIT; ++$i) {
+            $this->stream->push(new Url($loc));
         }
     }
 
     public function testOverflowSize(): void
     {
+        $this->expectException(SizeOverflowException::class);
         $i = 0;
         $loops = 10000;
         $loop_size = (int) floor(CallbackStream::BYTE_LIMIT / $loops);
@@ -208,7 +198,7 @@ class CallbackStreamTest extends TestCase
             ->willReturn($opened)
         ;
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly($loops))
             ->method('url')
             ->willReturn($loc)
         ;
@@ -227,13 +217,8 @@ class CallbackStreamTest extends TestCase
 
         $this->stream->open();
 
-        try {
-            for (; $i < $loops; ++$i) {
-                $this->stream->push(new Url($loc));
-            }
-            self::assertTrue(false, 'Must throw SizeOverflowException.');
-        } catch (SizeOverflowException $e) {
-            $this->stream->close();
+        for (; $i < $loops; ++$i) {
+            $this->stream->push(new Url($loc));
         }
     }
 

@@ -70,14 +70,9 @@ class OutputStreamTest extends TestCase
 
     public function testAlreadyOpened(): void
     {
+        $this->expectException(StreamStateException::class);
         $this->open();
-
-        try {
-            $this->stream->open();
-            self::assertTrue(false, 'Must throw StreamStateException.');
-        } catch (StreamStateException $e) {
-            $this->close();
-        }
+        $this->stream->open();
     }
 
     public function testNotOpened(): void
@@ -160,27 +155,24 @@ class OutputStreamTest extends TestCase
 
     public function testOverflowLinks(): void
     {
+        $this->expectException(LinksOverflowException::class);
         $loc = '/';
         $this->stream->open();
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly(OutputStream::LINKS_LIMIT))
             ->method('url')
             ->willReturn($loc)
         ;
 
-        try {
-            for ($i = 0; $i <= OutputStream::LINKS_LIMIT; ++$i) {
-                $this->stream->push(new Url($loc));
-            }
-            self::assertTrue(false, 'Must throw LinksOverflowException.');
-        } catch (LinksOverflowException $e) {
-            $this->stream->close();
+        for ($i = 0; $i <= OutputStream::LINKS_LIMIT; ++$i) {
+            $this->stream->push(new Url($loc));
             ob_clean(); // not check content
         }
     }
 
     public function testOverflowSize(): void
     {
+        $this->expectException(SizeOverflowException::class);
         $loops = 10000;
         $loop_size = (int) floor(OutputStream::BYTE_LIMIT / $loops);
         $prefix_size = OutputStream::BYTE_LIMIT - ($loops * $loop_size);
@@ -193,20 +185,15 @@ class OutputStreamTest extends TestCase
             ->willReturn(str_repeat('/', $prefix_size))
         ;
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly($loops))
             ->method('url')
             ->willReturn($loc)
         ;
 
         $this->stream->open();
 
-        try {
-            for ($i = 0; $i < $loops; ++$i) {
-                $this->stream->push(new Url($loc));
-            }
-            self::assertTrue(false, 'Must throw SizeOverflowException.');
-        } catch (SizeOverflowException $e) {
-            $this->stream->close();
+        for ($i = 0; $i < $loops; ++$i) {
+            $this->stream->push(new Url($loc));
             ob_clean(); // not check content
         }
     }

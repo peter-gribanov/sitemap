@@ -189,7 +189,7 @@ class RenderGzipFileStreamTest extends TestCase
         $loc = '/';
         $this->stream->open();
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly(RenderGzipFileStream::LINKS_LIMIT))
             ->method('url')
             ->willReturn($loc)
         ;
@@ -214,7 +214,7 @@ class RenderGzipFileStreamTest extends TestCase
             ->willReturn(str_repeat('/', $prefix_size))
         ;
         $this->render
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly($loops))
             ->method('url')
             ->willReturn($loc)
         ;
